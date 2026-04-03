@@ -534,6 +534,16 @@ class OpenAiServer(
               }
             }
           }
+
+          // MCP (Model Context Protocol) routes
+          mcpRoutes(
+            getModelName = { activeModel?.name ?: "unknown" },
+            runInference = { prompt ->
+              inferenceMutex.withLock {
+                runInferenceBlocking(activeModel!!, prompt)
+              }
+            }
+          )
         }
       }
       
