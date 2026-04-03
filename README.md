@@ -1,11 +1,11 @@
-# Google AI Edge Gallery ✨
+# Rigrise AI Edge ✨
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/google-ai-edge/gallery)](https://github.com/google-ai-edge/gallery/releases)
 
-**Explore, Experience, and Evaluate the Future of On-Device Generative AI with Google AI Edge.**
+**Explore, Experience, and Evaluate the Future of On-Device Generative AI with Rigrise AI Edge.**
 
-The Google AI Edge Gallery is an experimental app that puts the power of cutting-edge Generative AI models directly into your hands, running entirely on your Android *(available now)* and iOS *(available now)* devices. Dive into a world of creative and practical AI use cases, all running locally, without needing an internet connection once the model is loaded. Experiment with different models, chat, ask questions with images and audio clip, explore prompts, and more!
+The Rigrise AI Edge is an experimental app that puts the power of cutting-edge Generative AI models directly into your hands, running entirely on your Android *(available now)* and iOS *(available now)* devices. Dive into a world of creative and practical AI use cases, all running locally, without needing an internet connection once the model is loaded. Experiment with different models, chat, ask questions with images and audio clip, explore prompts, and more!
 
 | **Install the app today from Google Play** | **Install the app today from App Store** |
 | :--- | :--- |
@@ -51,7 +51,7 @@ For users without Google Play access, install the apk from the [**latest release
 
 ## 🛠️ Technology Highlights
 
-*   **Google AI Edge:** Core APIs and tools for on-device ML.
+*   **Rigrise AI Edge:** Core APIs and tools for on-device ML.
 *   **LiteRT:** Lightweight runtime for optimized model execution.
 *   **LLM Inference API:** Powering on-device Large Language Models.
 *   **Hugging Face Integration:** For model discovery and download.

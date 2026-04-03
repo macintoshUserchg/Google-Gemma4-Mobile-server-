@@ -1,1 +1,1 @@
-# Google AI Edge Gallery (Android)
+# Rigrise AI Edge (Android)
