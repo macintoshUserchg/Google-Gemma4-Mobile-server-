@@ -6,7 +6,7 @@
 
 Rigrise AI Edge is an experimental app that puts cutting-edge Generative AI models in your hands, running entirely on-device without needing an internet connection once the model is loaded.
 
-> **Attribution**: This project is a fork of [Google AI Edge Gallery](https://github.com/google-ai-edge/gallery) by Google. All original work, architecture, and core features are credited to the Google AI Edge team. This fork adds additional features and customizations on top of the original. We are grateful to Google for open-sourcing this project under the Apache 2.0 License.
+> **Attribution**: This project is a fork of [Google AI Edge Gallery](https://github.com/google-ai-edge/gallery) by Google. All original work, architecture, and core features are credited to the Google AI Edge team. This fork adds additional features and customizations on top of the original. We are grateful to Google for open-sourcing this project.
 
 **Now Featuring: Gemma 4**
 
@@ -47,6 +47,4 @@ Check out the [development notes](DEVELOPMENT.md) for instructions on how to bui
 
 ## 📄 License
 
-Licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for details.
-
-This project is based on [Google AI Edge Gallery](https://github.com/google-ai-edge/gallery), copyright Google LLC, licensed under the Apache License, Version 2.0.
+This project is a fork of [Google AI Edge Gallery](https://github.com/google-ai-edge/gallery), copyright Google LLC. All licensing terms, forking rules, and contribution guidelines are governed by the original repository's [Apache License 2.0](https://github.com/google-ai-edge/gallery/blob/main/LICENSE). Any further forks, modifications, or distributions of this project must comply with those same terms.
