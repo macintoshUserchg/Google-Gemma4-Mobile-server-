@@ -1,81 +1,48 @@
 # Rigrise AI Edge ✨
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/google-ai-edge/gallery)](https://github.com/google-ai-edge/gallery/releases)
 
-**Explore, Experience, and Evaluate the Future of On-Device Generative AI with Rigrise AI Edge.**
+**Run powerful open-source LLMs directly on your Android device — fully offline, private, and fast.**
 
-The Rigrise AI Edge is an experimental app that puts the power of cutting-edge Generative AI models directly into your hands, running entirely on your Android *(available now)* and iOS *(available now)* devices. Dive into a world of creative and practical AI use cases, all running locally, without needing an internet connection once the model is loaded. Experiment with different models, chat, ask questions with images and audio clip, explore prompts, and more!
+Rigrise AI Edge is an experimental app that puts cutting-edge Generative AI models in your hands, running entirely on-device without needing an internet connection once the model is loaded.
 
-| **Install the app today from Google Play** | **Install the app today from App Store** |
-| :--- | :--- |
-| <a href='https://play.google.com/store/apps/details?id=com.google.ai.edge.gallery'><img alt='Get it on Google Play' height="120" src='https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png'/></a> | <a href="https://apps.apple.com/us/app/google-ai-edge-gallery/id6749645337?itscg=30200&itsct=apps_box_badge&mttnsubad=6749645337" style="display: inline-block;"> <img src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us?releaseDate=1771977600" alt="Download on the App Store" style="width: 246px; height: 90px; vertical-align: middle; object-fit: contain;" /></a> |
+**Now Featuring: Gemma 4**
 
-For users without Google Play access, install the apk from the [**latest release**](https://github.com/google-ai-edge/gallery/releases/latest/)
-> [!IMPORTANT]
-> You must uninstall all previous versions of the app before installing this one. Past versions will no longer be working and supported.
-
-
-## App Preview
-
-<img width="480" alt="01" src="https://github.com/user-attachments/assets/09dbcf7e-a298-4063-920e-bfc88591f4a2" />
-<img width="480" alt="02" src="https://github.com/user-attachments/assets/e2986bba-f807-42e1-9d5e-a5a978fa97e9" />
-<img width="480" alt="03" src="https://github.com/user-attachments/assets/ad3aa9ab-e3b6-4a12-bbd4-885bb202aa0f" />
-<img width="480" alt="04" src="https://github.com/user-attachments/assets/6441e752-e5f5-4753-9611-fa0122cdae49" />
-<img width="480" alt="05" src="https://github.com/user-attachments/assets/a5ebcf15-640a-4c11-93ce-b92fe365f1a3" />
-<img width="480" alt="06" src="https://github.com/user-attachments/assets/973c7a66-1906-400e-8fac-ee9b13b21aa1" />
-<img width="480" alt="07" src="https://github.com/user-attachments/assets/d3227bc6-8d78-47a1-bbfa-93f009117882" />
+Official support for the Gemma 4 family — experience advanced reasoning, logic, and creative capabilities without ever sending your data to a server.
 
 ## ✨ Core Features
 
-*   **📱 Run Locally, Fully Offline:** Experience the magic of GenAI without an internet connection. All processing happens directly on your device.
-*   **🤖 Choose Your Model:** Easily switch between different models from Hugging Face and compare their performance.
-*   **🌻 Tiny Garden**: Play an experimental and fully offline mini game that uses natural language to plant, water, and harvest flowers.
-*   **📳 Mobile Actions**: Use our [open-source recipe](https://github.com/google-gemini/gemma-cookbook/blob/main/FunctionGemma/%5BFunctionGemma%5DFinetune_FunctionGemma_270M_for_Mobile_Actions_with_Hugging_Face.ipynb) to learn model fine-tuning, then load it in app to unlock offline device controls.
-*   **🖼️ Ask Image:** Upload images and ask questions about them. Get descriptions, solve problems, or identify objects.
-*   **🎙️ Audio Scribe:** Transcribe an uploaded or recorded audio clip into text or translate it into another language.
-*   **✍️ Prompt Lab:** Summarize, rewrite, generate code, or use freeform prompts to explore single-turn LLM use cases.
-*   **💬 AI Chat:** Engage in multi-turn conversations.
-*   **🌐 Model Server (Experimental)**: Host your downloaded LLM models as OpenAI-compatible API endpoints directly from your Android device. Connect other tools and agents to your phone over the local network.
-*   **📊 Performance Insights:** Real-time benchmarks (TTFT, decode speed, latency).
-*   **🧩 Bring Your Own Model:** Test your local LiteRT `.litertlm` models.
-*   **🔗 Developer Resources:** Quick links to model cards and source code.
+* **Agent Skills**: Augment your LLM with tools like Wikipedia, interactive maps, and rich visual summary cards. Load modular skills from a URL or browse community contributions.
+* **AI Chat with Thinking Mode**: Multi-turn conversations with optional step-by-step reasoning visibility.
+* **Ask Image**: Identify objects, solve visual puzzles, or get descriptions using your camera or photo gallery.
+* **Audio Scribe**: Transcribe and translate voice recordings into text on-device.
+* **Prompt Lab**: Test prompts and single-turn use cases with control over temperature, top-k, and other parameters.
+* **Mobile Actions**: Offline device controls powered by a finetune of FunctionGemma 270m.
+* **Tiny Garden**: Experimental mini-game using natural language to plant and harvest a virtual garden.
+* **Model Management & Benchmark**: Download models from the list or load your own. Run benchmarks to measure performance on your hardware.
+* **100% On-Device Privacy**: All inference happens locally. No internet required.
 
-## 🏁 Get Started in Minutes!
+## 🏁 Get Started
 
-1. **Check OS Requirement**: Android 12 and up
-2.  **Download the App:**
-    - Install the app from [Google Play](https://play.google.com/store/apps/details?id=com.google.ai.edge.gallery).
-    - For users without Google Play access: install the apk from the [**latest release**](https://github.com/google-ai-edge/gallery/releases/latest/)
-3.  **Install & Explore:** For detailed installation instructions (including for corporate devices) and a full user guide, head over to our [**Project Wiki**](https://github.com/google-ai-edge/gallery/wiki)!
+1. **Requirement**: Android 12 and up
+2. **Build locally**: See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions
+3. **Install via ADB**: `adb install app-debug.apk`
 
-## 🛠️ Technology Highlights
+## 🛠️ Technology
 
-*   **Rigrise AI Edge:** Core APIs and tools for on-device ML.
-*   **LiteRT:** Lightweight runtime for optimized model execution.
-*   **LLM Inference API:** Powering on-device Large Language Models.
-*   **Hugging Face Integration:** For model discovery and download.
+* **LiteRT**: Lightweight runtime for optimized model execution
+* **LLM Inference API**: On-device Large Language Model inference
+* **Hugging Face Integration**: Model discovery and download
 
 ## ⌨️ Development
 
-Check out the [development notes](DEVELOPMENT.md) for instructions about how to build the app locally.
+Check out the [development notes](DEVELOPMENT.md) for instructions on how to build the app locally.
 
 ## 🤝 Feedback
 
-This is an **experimental Beta release**, and your input is crucial!
-
-*   🐞 **Found a bug?** [Report it here!](https://github.com/google-ai-edge/gallery/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5BBUG%5D)
-*   💡 **Have an idea?** [Suggest a feature!](https://github.com/google-ai-edge/gallery/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=%5BFEATURE%5D)
+* 🐞 **Found a bug?** Open an issue in this repository
+* 💡 **Have an idea?** Submit a feature request
 
 ## 📄 License
 
 Licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for details.
-
-## 🔗 Useful Links
-
-*   [**Project Wiki (Detailed Guides)**](https://github.com/google-ai-edge/gallery/wiki)
-*   [Hugging Face LiteRT Community](https://huggingface.co/litert-community)
-*   [LLM Inference guide for Android](https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference/android)
-*   [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM)
-*   [Google AI Edge Documentation](https://ai.google.dev/edge)
-# Google-Gemma4-Mobile-server-
