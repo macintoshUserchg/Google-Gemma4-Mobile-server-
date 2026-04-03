@@ -1,1 +1,16 @@
+# macOS
 .DS_Store
+
+# Local dev scripts and temp files
+result.txt
+robust_test.sh
+*.sh
+
+# IDE
+.claude/
+.remember/
+.idea/
+
+# Android build artifacts (also covered by Android/.gitignore)
+*.apk
+*.aab
