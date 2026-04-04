@@ -219,8 +219,11 @@ fun ModelServerScreen(
 
     if (selectedTab == 0) {
         // --- CONTROL TAB (All scrollable together) ---
-        val downloadedModels = modelManagerViewModel.getAllModels().filter { 
-          mmUiState.modelDownloadStatus[it.name]?.status == ModelDownloadStatusType.SUCCEEDED && it.isLlm
+        // Derive downloaded models from mmUiState to ensure recomputation when download status changes
+        val downloadedModels = remember(mmUiState.modelDownloadStatus) {
+          modelManagerViewModel.getAllModels().filter {
+            mmUiState.modelDownloadStatus[it.name]?.status == ModelDownloadStatusType.SUCCEEDED && it.isLlm
+          }
         }
 
         LazyColumn(

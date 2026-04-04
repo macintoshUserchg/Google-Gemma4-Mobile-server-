@@ -45,6 +45,7 @@ import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.google.ai.edge.litertlm.ToolProvider
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.CoroutineScope
 
@@ -103,6 +104,10 @@ object LlmChatModelHelper : LlmModelHelper {
     Log.d(TAG, "Preferred backend: $preferredBackend")
 
     val modelPath = model.getPath(context = context)
+    Log.d(TAG, "Model path: $modelPath")
+    val modelFile = File(modelPath)
+    Log.d(TAG, "Model file exists: ${modelFile.exists()}")
+    Log.d(TAG, "Model file size: ${modelFile.length()} bytes")
     val engineConfig =
       EngineConfig(
         modelPath = modelPath,
@@ -117,9 +122,12 @@ object LlmChatModelHelper : LlmModelHelper {
       )
 
     // Create an instance of LiteRT LM engine and conversation.
+    Log.d(TAG, "Creating LiteRT LM engine...")
     try {
       val engine = Engine(engineConfig)
+      Log.d(TAG, "Engine object created, initializing...")
       engine.initialize()
+      Log.d(TAG, "Engine initialized successfully")
 
       ExperimentalFlags.enableConversationConstrainedDecoding =
         enableConversationConstrainedDecoding
@@ -143,6 +151,10 @@ object LlmChatModelHelper : LlmModelHelper {
       ExperimentalFlags.enableConversationConstrainedDecoding = false
       model.instance = LlmModelInstance(engine = engine, conversation = conversation)
     } catch (e: Exception) {
+      Log.e(TAG, "Failed to create engine", e)
+      Log.e(TAG, "Error type: ${e.javaClass.simpleName}")
+      Log.e(TAG, "Error message: ${e.message}")
+      Log.e(TAG, "Error cause: ${e.cause}")
       onDone(cleanUpMediapipeTaskErrorMessage(e.message ?: "Unknown error"))
       return
     }

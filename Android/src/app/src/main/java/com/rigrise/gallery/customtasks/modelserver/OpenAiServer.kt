@@ -673,8 +673,22 @@ class OpenAiServer(
     var firstTokenReported = false
     model.runtimeHelper.runInferenceAsFlow(model = model, input = input, images = bitmaps)
       .collect { partialResult ->
-        if (!firstTokenReported && partialResult.isNotEmpty()) { onFirstToken(); firstTokenReported = true }
-        if (partialResult.isNotEmpty()) { fullResult.setLength(0); fullResult.append(partialResult) }
+        if (!firstTokenReported && partialResult.isNotEmpty()) {
+          onFirstToken()
+          firstTokenReported = true
+        }
+        if (partialResult.isNotEmpty()) {
+          // Handle both streaming styles:
+          // 1) delta chunks: append
+          // 2) cumulative chunks: replace when incoming contains current full text prefix
+          val current = fullResult.toString()
+          if (current.isNotEmpty() && partialResult.startsWith(current)) {
+            fullResult.setLength(0)
+            fullResult.append(partialResult)
+          } else {
+            fullResult.append(partialResult)
+          }
+        }
       }
     return fullResult.toString()
   }

@@ -189,16 +189,32 @@ class ModelServerViewModel @Inject constructor(
             val request = ChatCompletionRequest(
                 model = _uiState.value.runningModelName,
                 messages = listOf(ChatMessage(role = "user", content = JsonPrimitive(prompt))),
-                stream = false
+                stream = true
             )
-            
+
             val requestBody = json.encodeToString(ChatCompletionRequest.serializer(), request)
             conn.outputStream.write(requestBody.toByteArray())
-            
+
             if (conn.responseCode == 200) {
-                val responseBody = conn.inputStream.bufferedReader().readText()
-                val response = json.decodeFromString<ChatCompletionResponse>(responseBody)
-                response.choices.firstOrNull()?.message?.textContent ?: "No content"
+                val fullText = StringBuilder()
+                conn.inputStream.bufferedReader().useLines { lines ->
+                    lines.forEach { line ->
+                        if (!line.startsWith("data: ")) return@forEach
+                        val payload = line.removePrefix("data: ").trim()
+                        if (payload == "[DONE]") return@forEach
+
+                        try {
+                            val chunk = json.decodeFromString<ChatCompletionChunk>(payload)
+                            val delta = chunk.choices.firstOrNull()?.delta?.content
+                            if (!delta.isNullOrEmpty()) {
+                                fullText.append(delta)
+                            }
+                        } catch (_: Exception) {
+                            // Ignore non-chunk lines in SSE stream.
+                        }
+                    }
+                }
+                if (fullText.isNotEmpty()) fullText.toString() else "No content"
             } else {
                 val errorBody = conn.errorStream?.bufferedReader()?.readText() ?: "Unknown error"
                 "Error ${conn.responseCode}: $errorBody"
