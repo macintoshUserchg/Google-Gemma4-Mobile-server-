@@ -26,6 +26,7 @@ import com.rigrise.gallery.BenchmarkResultsSerializer
 import com.rigrise.gallery.CutoutsSerializer
 import com.rigrise.gallery.GalleryLifecycleProvider
 import com.rigrise.gallery.SettingsSerializer
+import com.rigrise.gallery.SkillsSerializer
 import com.rigrise.gallery.UserDataSerializer
 import com.rigrise.gallery.data.DataStoreRepository
 import com.rigrise.gallery.data.DefaultDataStoreRepository
@@ -34,6 +35,7 @@ import com.rigrise.gallery.data.DownloadRepository
 import com.rigrise.gallery.proto.BenchmarkResults
 import com.rigrise.gallery.proto.CutoutCollection
 import com.rigrise.gallery.proto.Settings
+import com.rigrise.gallery.proto.Skills
 import com.rigrise.gallery.proto.UserData
 import dagger.Module
 import dagger.Provides
@@ -72,6 +74,13 @@ internal object AppModule {
   @Singleton
   fun provideBenchmarkResultsSerializer(): Serializer<BenchmarkResults> {
     return BenchmarkResultsSerializer
+  }
+
+  // Provides the SkillsSerializer
+  @Provides
+  @Singleton
+  fun provideSkillsSerializer(): Serializer<Skills> {
+    return SkillsSerializer
   }
 
   // Provides DataStore<Settings>
@@ -126,6 +135,19 @@ internal object AppModule {
     )
   }
 
+  // Provides DataStore<Skills>
+  @Provides
+  @Singleton
+  fun provideSkillsDataStore(
+    @ApplicationContext context: Context,
+    skillsSerializer: Serializer<Skills>,
+  ): DataStore<Skills> {
+    return DataStoreFactory.create(
+      serializer = skillsSerializer,
+      produceFile = { context.dataStoreFile("skills.pb") },
+    )
+  }
+
   // Provides AppLifecycleProvider
   @Provides
   @Singleton
@@ -141,12 +163,14 @@ internal object AppModule {
     userDataDataStore: DataStore<UserData>,
     cutoutsDataStore: DataStore<CutoutCollection>,
     benchmarkResultsStore: DataStore<BenchmarkResults>,
+    skillsDataStore: DataStore<Skills>,
   ): DataStoreRepository {
     return DefaultDataStoreRepository(
       dataStore,
       userDataDataStore,
       cutoutsDataStore,
       benchmarkResultsStore,
+      skillsDataStore,
     )
   }
 

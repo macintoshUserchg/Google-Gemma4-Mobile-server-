@@ -30,6 +30,7 @@ data class DefaultConfig(
   @SerializedName("temperature") val temperature: Float?,
   @SerializedName("accelerators") val accelerators: String?,
   @SerializedName("visionAccelerator") val visionAccelerator: String?,
+  @SerializedName("maxContextLength") val maxContextLength: Int?,
   @SerializedName("maxTokens") val maxTokens: Int?,
 )
 
@@ -56,6 +57,7 @@ data class AllowedModel(
   val llmSupportAudio: Boolean? = null,
   val llmSupportTinyGarden: Boolean? = null,
   val llmSupportMobileActions: Boolean? = null,
+  val llmSupportThinking: Boolean? = null,
   val minDeviceMemoryInGb: Int? = null,
   val bestForTaskTypes: List<String>? = null,
   val localModelFilePathOverride: String? = null,
@@ -144,7 +146,9 @@ data class AllowedModel(
               defaultTopP = defaultTopP,
               defaultTemperature = defaultTemperature,
               defaultMaxToken = llmMaxToken,
+              defaultMaxContextLength = defaultConfig.maxContextLength,
               accelerators = accelerators,
+              supportThinking = llmSupportThinking == true,
             )
           })
           .toMutableList()

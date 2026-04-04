@@ -24,6 +24,8 @@ import com.rigrise.gallery.proto.Cutout
 import com.rigrise.gallery.proto.CutoutCollection
 import com.rigrise.gallery.proto.ImportedModel
 import com.rigrise.gallery.proto.Settings
+import com.rigrise.gallery.proto.Skill
+import com.rigrise.gallery.proto.Skills
 import com.rigrise.gallery.proto.Theme
 import com.rigrise.gallery.proto.UserData
 import kotlinx.coroutines.flow.first
@@ -85,6 +87,29 @@ interface DataStoreRepository {
 
   fun deleteBenchmarkResult(index: Int)
 
+  fun addSkill(skill: Skill)
+
+  fun setSkills(skills: List<Skill>)
+
+  fun setSkillSelected(skill: Skill, selected: Boolean)
+
+  fun setAllSkillsSelected(selected: Boolean)
+
+  fun getAllSkills(): List<Skill>
+
+  fun deleteSkill(name: String)
+
+  suspend fun deleteSkills(names: Set<String>)
+
+  /** Records that a promo with the specified ID has been viewed. */
+  fun addViewedPromoId(promoId: String)
+
+  /** Removes a viewed promo record. */
+  fun removeViewedPromoId(promoId: String)
+
+  /** Returns whether a promo with the specified ID has been viewed. */
+  fun hasViewedPromo(promoId: String): Boolean
+
   fun setModelServerApiKeyRequired(required: Boolean)
 
   fun isModelServerApiKeyRequired(): Boolean
@@ -96,23 +121,8 @@ class DefaultDataStoreRepository(
   private val userDataDataStore: DataStore<UserData>,
   private val cutoutDataStore: DataStore<CutoutCollection>,
   private val benchmarkResultsDataStore: DataStore<BenchmarkResults>,
+  private val skillsDataStore: DataStore<Skills>,
 ) : DataStoreRepository {
-  override fun setModelServerApiKeyRequired(required: Boolean) {
-    runBlocking {
-      dataStore.updateData { settings ->
-        settings.toBuilder().setModelServerApiKeyDisabled(!required).build()
-      }
-    }
-  }
-
-  override fun isModelServerApiKeyRequired(): Boolean {
-    return runBlocking {
-      val settings = dataStore.data.first()
-      // Validation is required if it's NOT disabled
-      !settings.modelServerApiKeyDisabled
-    }
-  }
-
   override fun saveTextInputHistory(history: List<String>) {
     runBlocking {
       dataStore.updateData { settings ->
@@ -324,6 +334,121 @@ class DefaultDataStoreRepository(
         val newResults = results.toBuilder().removeResult(index).build()
         newResults
       }
+    }
+  }
+
+  override fun addSkill(skill: Skill) {
+    runBlocking {
+      skillsDataStore.updateData { skills ->
+        val newSkills = buildList {
+          add(skill)
+          addAll(skills.skillList)
+        }
+        skills.toBuilder().clearSkill().addAllSkill(newSkills).build()
+      }
+    }
+  }
+
+  override fun setSkills(skills: List<Skill>) {
+    runBlocking {
+      skillsDataStore.updateData { curSkills ->
+        curSkills.toBuilder().clearSkill().addAllSkill(skills).build()
+      }
+    }
+  }
+
+  override fun setSkillSelected(skill: Skill, selected: Boolean) {
+    runBlocking {
+      skillsDataStore.updateData { skills ->
+        val newSkills = mutableListOf<Skill>()
+        for (curSkill in skills.skillList) {
+          if (curSkill.name == skill.name) {
+            newSkills.add(curSkill.toBuilder().setSelected(selected).build())
+          } else {
+            newSkills.add(curSkill)
+          }
+        }
+        Skills.newBuilder().addAllSkill(newSkills).build()
+      }
+    }
+  }
+
+  override fun setAllSkillsSelected(selected: Boolean) {
+    runBlocking {
+      skillsDataStore.updateData { skills ->
+        val newSkills = mutableListOf<Skill>()
+        for (curSkill in skills.skillList) {
+          newSkills.add(curSkill.toBuilder().setSelected(selected).build())
+        }
+        Skills.newBuilder().addAllSkill(newSkills).build()
+      }
+    }
+  }
+
+  override fun getAllSkills(): List<Skill> {
+    return runBlocking { skillsDataStore.data.first().skillList }
+  }
+
+  override fun deleteSkill(name: String) {
+    runBlocking {
+      skillsDataStore.updateData { skills ->
+        val newSkills = mutableListOf<Skill>()
+        for (skill in skills.skillList) {
+          if (skill.name != name) {
+            newSkills.add(skill)
+          }
+        }
+        Skills.newBuilder().addAllSkill(newSkills).build()
+      }
+    }
+  }
+
+  override suspend fun deleteSkills(names: Set<String>) {
+    skillsDataStore.updateData { skills ->
+      val newSkills = skills.skillList.filter { it.name !in names }
+      skills.toBuilder().clearSkill().addAllSkill(newSkills).build()
+    }
+  }
+
+  override fun addViewedPromoId(promoId: String) {
+    runBlocking {
+      dataStore.updateData { settings ->
+        if (settings.viewedPromoIdList.contains(promoId)) {
+          settings
+        } else {
+          settings.toBuilder().addViewedPromoId(promoId).build()
+        }
+      }
+    }
+  }
+
+  override fun removeViewedPromoId(promoId: String) {
+    runBlocking {
+      dataStore.updateData { settings ->
+        val newList = settings.viewedPromoIdList.filter { it != promoId }
+        settings.toBuilder().clearViewedPromoId().addAllViewedPromoId(newList).build()
+      }
+    }
+  }
+
+  override fun hasViewedPromo(promoId: String): Boolean {
+    return runBlocking {
+      val settings = dataStore.data.first()
+      settings.viewedPromoIdList.contains(promoId)
+    }
+  }
+
+  override fun setModelServerApiKeyRequired(required: Boolean) {
+    runBlocking {
+      dataStore.updateData { settings ->
+        settings.toBuilder().setModelServerApiKeyDisabled(!required).build()
+      }
+    }
+  }
+
+  override fun isModelServerApiKeyRequired(): Boolean {
+    return runBlocking {
+      !dataStore.data.first().modelServerApiKeyDisabled
     }
   }
 }

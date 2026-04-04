@@ -28,6 +28,8 @@ import com.rigrise.gallery.data.Model
 import com.rigrise.gallery.data.Task
 import com.rigrise.gallery.ui.llmchat.LlmChatModelHelper
 import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.ToolProvider
+import com.google.ai.edge.litertlm.tool
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -69,12 +71,14 @@ Tips:
 class TinyGardenTask @Inject constructor() : CustomTask {
   private val _updateChannel = Channel<TinyGardenCommand>(Channel.BUFFERED)
   private val commandFlow = _updateChannel.receiveAsFlow()
-  private val tools =
-    listOf(
-      TinyGardenTools(
-        onFunctionCalled = {
-          val unused = _updateChannel.trySend(it)
-        }
+  private val tools: List<ToolProvider> =
+    listOf<ToolProvider>(
+      tool(
+        TinyGardenTools(
+          onFunctionCalled = {
+            val unused = _updateChannel.trySend(it)
+          }
+        )
       )
     )
 

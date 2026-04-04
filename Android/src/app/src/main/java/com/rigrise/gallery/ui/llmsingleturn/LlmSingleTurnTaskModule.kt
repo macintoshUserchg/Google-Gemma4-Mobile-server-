@@ -45,9 +45,10 @@ class LlmSingleTurnTask @Inject constructor() : CustomTask {
       icon = Icons.Outlined.Widgets,
       models = mutableListOf(),
       description = "Single turn use cases with on-device large language models",
+      shortDescription = "Single turn use cases",
       docUrl = "https://github.com/google-ai-edge/LiteRT-LM/blob/main/kotlin/README.md",
       sourceCodeUrl =
-        "https://github.com/google-ai-edge/gallery/blob/main/Android/src/app/src/main/java/com/rigrise/gallery/ui/llmchat/LlmChatModelHelper.kt",
+        "https://github.com/google-ai-edge/gallery/blob/main/Android/src/app/src/main/java/com/google/ai/edge/gallery/ui/llmchat/LlmChatModelHelper.kt",
       textInputPlaceHolderRes = R.string.text_input_placeholder_llm_chat,
     )
 

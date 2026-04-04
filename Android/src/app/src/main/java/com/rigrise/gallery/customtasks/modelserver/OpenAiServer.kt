@@ -55,6 +55,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -70,6 +72,28 @@ private const val TAG = "OpenAiServer"
 private const val NOTIFICATION_ID = 1001
 private const val CHANNEL_ID = "model_server_channel"
 private const val EXPECTED_API_KEY = "mobile@123"
+
+/** Wraps the callback-based runInference into a Flow for streaming use. */
+private fun LlmModelHelper.runInferenceAsFlow(
+  model: Model,
+  input: String,
+  images: List<android.graphics.Bitmap> = emptyList(),
+  audioClips: List<ByteArray> = emptyList(),
+): kotlinx.coroutines.flow.Flow<String> = kotlinx.coroutines.flow.callbackFlow {
+  runInference(
+    model = model,
+    input = input,
+    images = images,
+    audioClips = audioClips,
+    resultListener = { partial, done, _ ->
+      trySend(partial)
+      if (done) close()
+    },
+    cleanUpListener = {},
+    onError = { msg -> close(Exception(msg)) },
+  )
+  awaitClose()
+}
 
 /**
  * Ktor HTTP server that provides OpenAI-compatible endpoints.
@@ -225,7 +249,7 @@ class OpenAiServer(
                   val writer = this
                   inferenceMutex.withLock {
                     var lastFullResult = ""
-                    activeModel!!.runtimeHelper.generateResponseStream(
+                    activeModel!!.runtimeHelper.runInferenceAsFlow(
                       model = activeModel!!,
                       input = userMessage,
                     ).collect { partialResult ->
@@ -298,7 +322,7 @@ class OpenAiServer(
                   val writer = this
                   inferenceMutex.withLock {
                     var lastFullResult = ""
-                    activeModel!!.runtimeHelper.generateResponseStream(
+                    activeModel!!.runtimeHelper.runInferenceAsFlow(
                       model = activeModel!!,
                       input = userMessage,
                     ).collect { partialResult ->
@@ -402,7 +426,7 @@ class OpenAiServer(
                   inferenceMutex.withLock {
                     var lastFullResult = ""
                     try {
-                      activeModel!!.runtimeHelper.generateResponseStream(
+                      activeModel!!.runtimeHelper.runInferenceAsFlow(
                         model = activeModel!!,
                         input = userMessage,
                         images = bitmaps,
@@ -640,37 +664,18 @@ class OpenAiServer(
    * Run inference and return full result.
    */
   private suspend fun runInferenceBlocking(
-    model: Model, 
-    input: String, 
+    model: Model,
+    input: String,
     bitmaps: List<Bitmap> = emptyList(),
     onFirstToken: () -> Unit = {}
   ): String {
     val fullResult = StringBuilder()
     var firstTokenReported = false
-
-    try {
-      model.runtimeHelper.generateResponseStream(
-        model = model,
-        input = input,
-        images = bitmaps,
-        audioClips = emptyList(),
-      ).collect { partialResult ->
-        if (!firstTokenReported && partialResult.isNotEmpty()) {
-            onFirstToken()
-            firstTokenReported = true
-        }
-        if (partialResult.isNotEmpty()) {
-          if (partialResult.length > fullResult.length) {
-            fullResult.setLength(0)
-            fullResult.append(partialResult)
-          } else if (!fullResult.toString().contains(partialResult)) {
-            fullResult.append(partialResult)
-          }
-        }
+    model.runtimeHelper.runInferenceAsFlow(model = model, input = input, images = bitmaps)
+      .collect { partialResult ->
+        if (!firstTokenReported && partialResult.isNotEmpty()) { onFirstToken(); firstTokenReported = true }
+        if (partialResult.isNotEmpty()) { fullResult.setLength(0); fullResult.append(partialResult) }
       }
-      return fullResult.toString()
-    } catch (e: Exception) {
-      throw e
-    }
+    return fullResult.toString()
   }
 }

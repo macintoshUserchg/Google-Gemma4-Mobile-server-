@@ -45,6 +45,7 @@ enum class ChatMessageType {
   PROMPT_TEMPLATES,
   WEBVIEW,
   COLLAPSABLE_PROGRESS_PANEL,
+  THINKING,
 }
 
 enum class ChatSide {
@@ -330,6 +331,7 @@ class ChatMessagePromptTemplates(
 class ChatMessageWebView(
   val url: String,
   val iframe: Boolean,
+  val aspectRatio: Float,
   override val side: ChatSide = ChatSide.AGENT,
   override val hideSenderLabel: Boolean = false,
 ) :
@@ -343,6 +345,7 @@ class ChatMessageWebView(
     return ChatMessageWebView(
       url = url,
       iframe = iframe,
+      aspectRatio = aspectRatio,
       side = side,
       hideSenderLabel = hideSenderLabel,
     )
@@ -351,6 +354,19 @@ class ChatMessageWebView(
 
 data class ProgressPanelItem(val title: String, val description: String)
 
+enum class LogMessageLevel {
+  Info,
+  Warning,
+  Error,
+}
+
+data class LogMessage(
+  val level: LogMessageLevel = LogMessageLevel.Info,
+  val source: String = "",
+  val lineNumber: Int = -1,
+  val message: String = "",
+)
+
 /** Chat message for showing a collapsable progress panel. */
 class ChatMessageCollapsableProgressPanel(
   val title: String,
@@ -358,6 +374,7 @@ class ChatMessageCollapsableProgressPanel(
   override val accelerator: String,
   val doneIcon: ImageVector = Icons.Rounded.Check,
   val items: List<ProgressPanelItem> = listOf(),
+  val logMessages: List<LogMessage> = listOf(),
   val customData: Any? = null,
 ) :
   ChatMessage(
@@ -372,7 +389,34 @@ class ChatMessageCollapsableProgressPanel(
       accelerator = accelerator,
       doneIcon = doneIcon,
       items = items.toList(),
+      logMessages = logMessages.toList(),
       customData = customData,
+    )
+  }
+}
+
+/** Chat message for showcasing a thought process. */
+class ChatMessageThinking(
+  val content: String,
+  val inProgress: Boolean,
+  override val side: ChatSide = ChatSide.AGENT,
+  override val hideSenderLabel: Boolean = false,
+  override val accelerator: String = "",
+) :
+  ChatMessage(
+    type = ChatMessageType.THINKING,
+    side = side,
+    hideSenderLabel = hideSenderLabel,
+    disableBubbleShape = true,
+    accelerator = accelerator,
+  ) {
+  override fun clone(): ChatMessageThinking {
+    return ChatMessageThinking(
+      content = content,
+      inProgress = inProgress,
+      side = side,
+      hideSenderLabel = hideSenderLabel,
+      accelerator = accelerator,
     )
   }
 }

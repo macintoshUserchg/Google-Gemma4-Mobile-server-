@@ -22,14 +22,8 @@ option java_multiple_files = true;
 
 enum Theme {
   THEME_UNSPECIFIED = 0;
-
-  // Force to use light theme.
   THEME_LIGHT = 1;
-
-  // Force to use dark theme.
   THEME_DARK = 2;
-
-  // Use the system them setting on user's phone.
   THEME_AUTO = 3;
 }
 
@@ -58,6 +52,7 @@ message LlmConfig {
   bool support_audio = 7;
   bool support_tiny_garden = 8;
   bool support_mobile_actions = 9;
+  bool support_thinking = 10;
 }
 
 message Settings {
@@ -65,18 +60,13 @@ message Settings {
   AccessTokenData access_token_data = 2;  // deprecated
   repeated string text_input_history = 3;
   repeated ImportedModel imported_model = 4;
-  // Has the app tos been accepted.
   bool is_tos_accepted = 5;
   bool has_run_tiny_garden = 6;
   bool has_seen_benchmark_comparison_help = 7;
-  // Has the Gemma terms of use been accepted.
   bool is_gemma_terms_accepted = 8;
-  // copybara:strip_begin(google-internal)
-  // Feature flags
   map<string, bool> feature_flags = 9;
-  // copybara:strip_end
-
-  bool model_server_api_key_disabled = 10;
+  repeated string viewed_promo_id = 10;
+  bool model_server_api_key_disabled = 11;
 }
 
 message UserData {
@@ -104,31 +94,16 @@ message StrokePath {
   int32 blur_type = 5;
 }
 
-// A single cutout, used in scrapbook demo.
 message Cutout {
-  // id of the cutout.
   string id = 1;
-
-  // Rotation degree applied to the cutout.
   int32 rotation_degree = 2;
-
-  // The width of the border.
   int32 border_width = 3;
-
-  // The color of the border.
   int32 border_color = 4;
-
-  // The fill color.
   int32 fill_color = 5;
-
-  // The fill mode.
   FillMode fill_mode = 6;
-
-  // Doodle stroke paths.
   repeated StrokePath doodle_stroke = 7;
 }
 
-// A collection of cutout, used in scrapbook demo.
 message CutoutCollection {
   repeated Cutout cutout = 1;
 }

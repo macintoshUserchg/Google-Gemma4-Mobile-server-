@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Rigrise
+ * Copyright 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,9 +20,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import com.rigrise.gallery.data.Model
 import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.ToolProvider
 import kotlinx.coroutines.CoroutineScope
 
-import kotlinx.coroutines.flow.Flow
+typealias ResultListener =
+  (partialResult: String, done: Boolean, partialThinkingResult: String?) -> Unit
 
 typealias CleanUpListener = () -> Unit
 
@@ -53,7 +55,7 @@ interface LlmModelHelper {
     supportAudio: Boolean,
     onDone: (String) -> Unit,
     systemInstruction: Contents? = null,
-    tools: List<Any> = listOf(),
+    tools: List<ToolProvider> = listOf(),
     enableConversationConstrainedDecoding: Boolean = false,
     coroutineScope: CoroutineScope? = null,
   )
@@ -73,7 +75,7 @@ interface LlmModelHelper {
     supportImage: Boolean = false,
     supportAudio: Boolean = false,
     systemInstruction: Contents? = null,
-    tools: List<Any> = listOf(),
+    tools: List<ToolProvider> = listOf(),
     enableConversationConstrainedDecoding: Boolean = false,
   )
 
@@ -86,20 +88,29 @@ interface LlmModelHelper {
   fun cleanUp(model: Model, onDone: () -> Unit)
 
   /**
-   * Generates a streaming response for the given input.
+   * Runs an inference pass on the specified model.
    *
    * @param model the model to run inference on.
    * @param input the input text for inference.
+   * @param resultListener callback invoked with partial inference results.
+   * @param cleanUpListener callback invoked to trigger necessary cleanup.
+   * @param onError callback invoked if an error occurs during inference.
    * @param images optional list of images provided as input context.
    * @param audioClips optional list of audio clips provided as input context.
-   * @return a Flow of String emitting partial inference results.
+   * @param coroutineScope optional coroutine scope for async inference execution.
+   * @param extraContext optional extra context for inference.
    */
-  fun generateResponseStream(
+  fun runInference(
     model: Model,
     input: String,
+    resultListener: ResultListener,
+    cleanUpListener: CleanUpListener,
+    onError: (message: String) -> Unit = {},
     images: List<Bitmap> = listOf(),
     audioClips: List<ByteArray> = listOf(),
-  ): Flow<String>
+    coroutineScope: CoroutineScope? = null,
+    extraContext: Map<String, String>? = null,
+  )
 
   /**
    * Stops the ongoing response generation for the model.

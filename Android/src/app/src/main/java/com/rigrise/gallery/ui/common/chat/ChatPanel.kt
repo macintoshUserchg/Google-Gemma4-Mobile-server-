@@ -16,7 +16,6 @@
 
 package com.rigrise.gallery.ui.common.chat
 
-import android.content.ClipData
 import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
@@ -24,10 +23,10 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,9 +39,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -51,12 +48,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -76,13 +70,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -90,18 +80,23 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.rigrise.gallery.R
 import com.rigrise.gallery.data.BuiltInTaskId
 import com.rigrise.gallery.data.Model
 import com.rigrise.gallery.data.Task
 import com.rigrise.gallery.ui.common.AudioAnimation
 import com.rigrise.gallery.ui.common.ErrorDialog
+import com.rigrise.gallery.ui.common.FloatingBanner
+import com.rigrise.gallery.ui.common.RotationalLoader
 import com.rigrise.gallery.ui.modelmanager.ModelInitializationStatusType
 import com.rigrise.gallery.ui.modelmanager.ModelManagerViewModel
 import com.rigrise.gallery.ui.theme.customColors
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /** Composable function for the main chat panel, displaying messages and handling user input. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,11 +115,12 @@ fun ChatPanel(
   onStreamImageMessage: (Model, ChatMessageImage) -> Unit = { _, _ -> },
   onStreamEnd: (Int) -> Unit = {},
   onStopButtonClicked: () -> Unit = {},
+  onSkillClicked: () -> Unit = {},
   onImageSelected: (bitmaps: List<Bitmap>, selectedBitmapIndex: Int) -> Unit = { _, _ -> },
   showStopButtonInInputWhenInProgress: Boolean = false,
   showImagePicker: Boolean = false,
   showAudioPicker: Boolean = false,
-  emptyStateComposable: @Composable () -> Unit = {},
+  emptyStateComposable: @Composable (Model) -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsState()
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
@@ -169,13 +165,21 @@ fun ChatPanel(
   var showBenchmarkConfigsDialog by remember { mutableStateOf(false) }
   val benchmarkMessage: MutableState<ChatMessage?> = remember { mutableStateOf(null) }
 
-  var showMessageLongPressedSheet by remember { mutableStateOf(false) }
-  var longPressedMessageIndex by remember { mutableIntStateOf(-1) }
-
   var showErrorDialog by remember { mutableStateOf(false) }
 
   var showAudioRecorder by remember { mutableStateOf(false) }
   var curAmplitude by remember { mutableIntStateOf(0) }
+  var pickedImagesCount by remember { mutableIntStateOf(0) }
+  var pickedAudioClipsCount by remember { mutableIntStateOf(0) }
+
+  var showImageLimitBanner by remember { mutableStateOf(false) }
+
+  LaunchedEffect(showImageLimitBanner) {
+    if (showImageLimitBanner) {
+      delay(3000) // 3 seconds
+      showImageLimitBanner = false
+    }
+  }
 
   // Keep track of the last message and last message content.
   val lastMessage: MutableState<ChatMessage?> = remember { mutableStateOf(null) }
@@ -193,26 +197,28 @@ fun ChatPanel(
     scrollToBottom(listState = listState, animate = true)
   }
 
-  // Scroll the content to the bottom when any of these changes.
-  LaunchedEffect(
-    messages.size,
-    lastMessage.value,
-    lastMessageContent.value,
-    lastMessage.value?.latencyMs,
-  ) {
+  // Auto-scroll to bottom when a new message is added or message type changes.
+  LaunchedEffect(messages.size, lastMessage.value?.type) {
     if (messages.isNotEmpty()) {
-      val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.last()
-      // Determines if an automatic scroll is necessary. It is true if:
-      // 1. The last item is not yet fully visible
-      // OR
-      // 2. The scroll position is close to the bottom (within 90 pixels of the end offset. 90 is
-      //    slightly taller than the "show stats" chip).
-      val canScroll =
-        lastVisibleItem.index < messages.size - 1 ||
-          lastVisibleItem.offset + lastVisibleItem.size - listState.layoutInfo.viewportEndOffset <
-            90
-      if (canScroll) {
-        scrollToBottom(listState = listState, animate = true)
+      scrollToBottom(listState = listState, animate = true)
+    }
+  }
+
+  // Scroll to keep up with streaming, ONLY if we are already at the bottom.
+  LaunchedEffect(lastMessage.value, lastMessageContent.value, lastMessage.value?.latencyMs) {
+    if (messages.isNotEmpty()) {
+      val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+      if (lastVisibleItem != null) {
+        // Determines if an automatic scroll is necessary. It is true if the scroll position is
+        // close to the bottom (within 90 pixels of the end offset. 90 is slightly taller than
+        // the "show stats" chip).
+        val canScroll =
+          lastVisibleItem.index == messages.size - 1 &&
+            lastVisibleItem.offset + lastVisibleItem.size - listState.layoutInfo.viewportEndOffset <
+              90
+        if (canScroll) {
+          scrollToBottom(listState = listState, animate = true)
+        }
       }
     }
   }
@@ -378,18 +384,6 @@ fun ChatPanel(
                     }
                     messageBubbleModifier = messageBubbleModifier.background(backgroundColor)
                   }
-                  if (message is ChatMessageText) {
-                    messageBubbleModifier =
-                      messageBubbleModifier.pointerInput(Unit) {
-                        detectTapGestures(
-                          onLongPress = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            longPressedMessageIndex = index
-                            showMessageLongPressedSheet = true
-                          }
-                        )
-                      }
-                  }
                   Box(modifier = messageBubbleModifier) {
                     when (message) {
                       // Text
@@ -435,6 +429,13 @@ fun ChatPanel(
                       // Collapsable progress panel.
                       is ChatMessageCollapsableProgressPanel ->
                         MessageBodyCollapsableProgressPanel(message = message)
+
+                      // Thinking
+                      is ChatMessageThinking ->
+                        MessageBodyThinking(
+                          thinkingText = message.content,
+                          inProgress = message.inProgress,
+                        )
 
                       else -> {}
                     }
@@ -485,8 +486,46 @@ fun ChatPanel(
         SnackbarHost(hostState = snackbarHostState, modifier = Modifier.padding(vertical = 4.dp))
 
         // Show empty state.
-        if (messages.isEmpty()) {
-          emptyStateComposable()
+        if (messages.isEmpty() && pickedImagesCount == 0 && pickedAudioClipsCount == 0) {
+          emptyStateComposable(selectedModel)
+        }
+        // Loading screen when model is initialized for that first time.
+        val isFirstInitializing =
+          modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING &&
+            modelInitializationStatus.isFirstInitialization(selectedModel)
+        Column(
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.Center,
+        ) {
+          AnimatedVisibility(
+            isFirstInitializing,
+            enter = fadeIn() + scaleIn(initialScale = 0.9f),
+            exit = fadeOut() + scaleOut(targetScale = 0.9f),
+          ) {
+            Box(modifier = Modifier.background(MaterialTheme.colorScheme.surface).fillMaxSize()) {
+              Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+              ) {
+                RotationalLoader(size = 32.dp)
+                Text(
+                  stringResource(R.string.aichat_initializing_title),
+                  style =
+                    MaterialTheme.typography.headlineLarge.copy(
+                      fontSize = 24.sp,
+                      fontWeight = FontWeight.Bold,
+                    ),
+                )
+                Text(
+                  stringResource(R.string.aichat_initializing_content),
+                  style = MaterialTheme.typography.bodyMedium,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  textAlign = TextAlign.Center,
+                )
+              }
+            }
+          }
         }
       }
 
@@ -528,10 +567,15 @@ fun ChatPanel(
           }
         },
         onAmplitudeChanged = { curAmplitude = it },
+        onSkillsClicked = onSkillClicked,
+        onPickedImagesChanged = { pickedImagesCount = it.size },
+        onPickedAudioClipsChanged = { pickedAudioClipsCount = it.size },
         showPromptTemplatesInMenu = false,
+        showSkillsPicker = task.id === BuiltInTaskId.LLM_AGENT_CHAT,
         showImagePicker = selectedModel.llmSupportImage && showImagePicker,
         showAudioPicker = selectedModel.llmSupportAudio && showAudioPicker,
         showStopButtonWhenInProgress = showStopButtonInInputWhenInProgress,
+        onImageLimitExceeded = { showImageLimitBanner = true },
       )
     }
   }
@@ -553,56 +597,6 @@ fun ChatPanel(
         onBenchmarkClicked(selectedModel, message, warmUpIterations, benchmarkIterations)
       },
     )
-  }
-
-  // Sheet to show when a message is long-pressed.
-  if (showMessageLongPressedSheet) {
-    val message =
-      uiState.messagesByModel
-        .getOrDefault(selectedModel.name, listOf())
-        .getOrNull(longPressedMessageIndex)
-    if (message != null && message is ChatMessageText) {
-      val clipboard = LocalClipboard.current
-
-      ModalBottomSheet(
-        onDismissRequest = { showMessageLongPressedSheet = false },
-        modifier = Modifier.wrapContentHeight(),
-      ) {
-        Column {
-          // Copy text.
-          Box(
-            modifier =
-              Modifier.fillMaxWidth().clickable {
-                // Copy text.
-                scope.launch {
-                  val clipData = ClipData.newPlainText("message content", message.content)
-                  val clipEntry = ClipEntry(clipData = clipData)
-                  clipboard.setClipEntry(clipEntry = clipEntry)
-                }
-
-                // Hide sheet.
-                showMessageLongPressedSheet = false
-
-                // Show a snack bar.
-                scope.launch { snackbarHostState.showSnackbar("Text copied to clipboard") }
-              }
-          ) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(6.dp),
-              modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-            ) {
-              Icon(
-                Icons.Rounded.ContentCopy,
-                contentDescription = stringResource(R.string.cd_copy_to_clipboard_icon),
-                modifier = Modifier.size(18.dp),
-              )
-              Text("Copy text")
-            }
-          }
-        }
-      }
-    }
   }
 }
 

@@ -75,6 +75,8 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "AGChatView"
 
+data class SendMessageTrigger(val model: Model, val messages: List<ChatMessage>)
+
 /**
  * A composable that displays a chat interface, allowing users to interact with different models
  * associated with a given task.
@@ -97,15 +99,16 @@ fun ChatView(
   onResetSessionClicked: (Model) -> Unit = {},
   onStreamImageMessage: (Model, ChatMessageImage) -> Unit = { _, _ -> },
   onStopButtonClicked: (Model) -> Unit = {},
+  onSkillClicked: () -> Unit = {},
   showStopButtonInInputWhenInProgress: Boolean = false,
   composableBelowMessageList: @Composable (Model) -> Unit = {},
   showImagePicker: Boolean = false,
   showAudioPicker: Boolean = false,
-  emptyStateComposable: @Composable () -> Unit = {},
+  emptyStateComposable: @Composable (Model) -> Unit = {},
   allowEditingSystemPrompt: Boolean = false,
   curSystemPrompt: String = "",
   onSystemPromptChanged: (String) -> Unit = {},
-  sendMessageTrigger: Pair<Model, List<ChatMessage>>? = null,
+  sendMessageTrigger: SendMessageTrigger? = null,
 ) {
   val uiState by viewModel.uiState.collectAsState()
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
@@ -144,7 +147,7 @@ fun ChatView(
   }
 
   LaunchedEffect(sendMessageTrigger) {
-    sendMessageTrigger?.let { trigger -> onSendMessage(trigger.first, trigger.second) }
+    sendMessageTrigger?.let { trigger -> onSendMessage(trigger.model, trigger.messages) }
   }
 
   // Handle system's edge swipe.
@@ -218,7 +221,7 @@ fun ChatView(
                 viewModel = viewModel,
                 innerPadding = innerPadding,
                 navigateUp = navigateUp,
-                onSendMessage = onSendMessage,
+                onSendMessage = { model, messages -> onSendMessage(model, messages) },
                 onRunAgainClicked = onRunAgainClicked,
                 onBenchmarkClicked = onBenchmarkClicked,
                 onStreamImageMessage = onStreamImageMessage,
@@ -237,6 +240,7 @@ fun ChatView(
                   allImageViewerImages = bitmaps
                   showImageViewer = true
                 },
+                onSkillClicked = onSkillClicked,
                 modifier = Modifier.weight(1f),
                 showStopButtonInInputWhenInProgress = showStopButtonInInputWhenInProgress,
                 showImagePicker = showImagePicker,

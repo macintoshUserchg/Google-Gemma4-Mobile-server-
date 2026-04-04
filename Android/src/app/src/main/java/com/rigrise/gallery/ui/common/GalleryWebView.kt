@@ -65,6 +65,7 @@ private val iframeWrapper =
 open class BaseGalleryWebViewClient(private val context: Context) : WebViewClient() {
   private val localFileAssetsLoader =
     WebViewAssetLoader.Builder()
+      .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
       .addPathHandler("/", WebViewAssetLoader.InternalStoragePathHandler(context, context.filesDir))
       .build()
 
@@ -73,11 +74,13 @@ open class BaseGalleryWebViewClient(private val context: Context) : WebViewClien
     request: WebResourceRequest?,
   ): WebResourceResponse? {
     if (request?.url != null && request.url.toString().startsWith(LOCAL_URL_BASE)) {
-      // Returns 404 if file not exist.
-      val path = request.url.path ?: ""
-      val localFile = File(context.filesDir, path)
-      if (!localFile.exists() || localFile.isDirectory) {
-        return WebResourceResponse("text/plain", "UTF-8", null)
+      // Returns 404 if file not exist for imported skills.
+      if (!request.url.toString().startsWith("$LOCAL_URL_BASE/assets/")) {
+        val path = request.url.path ?: ""
+        val localFile = File(context.filesDir, path)
+        if (!localFile.exists() || localFile.isDirectory) {
+          return WebResourceResponse("text/plain", "UTF-8", null)
+        }
       }
       return localFileAssetsLoader.shouldInterceptRequest(request.url)
     }
@@ -97,7 +100,7 @@ fun GalleryWebView(
   preventParentScrolling: Boolean = false,
   allowRequestPermission: Boolean = false,
   onWebViewCreated: ((WebView) -> Unit)? = null,
-  onConsoleMessage: ((ConsoleMessage?) -> Boolean)? = null,
+  onConsoleMessage: ((ConsoleMessage?) -> Unit)? = null,
   onPermissionRequest: ((PermissionRequest?) -> Unit)? = null,
   customWebViewClient: WebViewClient? = null,
 ) {
@@ -164,11 +167,11 @@ fun GalleryWebView(
         webChromeClient =
           object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+              Log.d(
+                TAG,
+                "${consoleMessage?.message()} -- From line ${consoleMessage?.lineNumber()} of ${consoleMessage?.sourceId()}",
+              )
               onConsoleMessage?.invoke(consoleMessage)
-                ?: Log.d(
-                  TAG,
-                  "${consoleMessage?.message()} -- From line ${consoleMessage?.lineNumber()} of ${consoleMessage?.sourceId()}",
-                )
               return super.onConsoleMessage(consoleMessage)
             }
 
@@ -182,10 +185,12 @@ fun GalleryWebView(
               onPermissionRequest?.invoke(request)
                 ?: run {
                   val resources = request.resources
-                  val isCameraRequest =
-                    resources.any { it == PermissionRequest.RESOURCE_VIDEO_CAPTURE }
-                  val isAudioRequest =
-                    resources.any { it == PermissionRequest.RESOURCE_AUDIO_CAPTURE }
+                  val isCameraRequest = resources.any {
+                    it == PermissionRequest.RESOURCE_VIDEO_CAPTURE
+                  }
+                  val isAudioRequest = resources.any {
+                    it == PermissionRequest.RESOURCE_AUDIO_CAPTURE
+                  }
 
                   if (isCameraRequest) {
                     pendingCameraPermissionRequest = request

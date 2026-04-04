@@ -81,11 +81,10 @@ class LlmSingleTurnViewModel @Inject constructor() : ViewModel() {
       // Run inference.
       var firstRun = true
       var response = ""
-      try {
-        model.runtimeHelper.generateResponseStream(
-          model = model,
-          input = input,
-        ).collect { partialResult ->
+      model.runtimeHelper.runInference(
+        model = model,
+        input = input,
+        resultListener = { partialResult: String, done: Boolean, partialThinkingResult: String? ->
           if (firstRun) {
             setPreparing(false)
             firstRun = false
@@ -100,12 +99,21 @@ class LlmSingleTurnViewModel @Inject constructor() : ViewModel() {
             promptTemplateType = uiState.value.selectedPromptTemplateType,
             response = response,
           )
-        }
-        setInProgress(false)
-      } catch (e: Exception) {
-        setPreparing(false)
-        setInProgress(false)
-      }
+
+          if (done) {
+            setInProgress(false)
+          }
+        },
+        cleanUpListener = {
+          setPreparing(false)
+          setInProgress(false)
+        },
+        onError = { _: String ->
+          setPreparing(false)
+          setInProgress(false)
+        },
+        coroutineScope = viewModelScope,
+      )
     }
   }
 

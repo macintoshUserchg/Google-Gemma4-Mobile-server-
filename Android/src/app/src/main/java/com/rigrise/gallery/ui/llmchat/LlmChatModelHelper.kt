@@ -30,6 +30,7 @@ import com.rigrise.gallery.data.DEFAULT_VISION_ACCELERATOR
 import com.rigrise.gallery.data.Model
 import com.rigrise.gallery.runtime.CleanUpListener
 import com.rigrise.gallery.runtime.LlmModelHelper
+import com.rigrise.gallery.runtime.ResultListener
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
@@ -42,12 +43,10 @@ import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.ToolProvider
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 
 private const val TAG = "AGLlmChatModelHelper"
 
@@ -65,7 +64,7 @@ object LlmChatModelHelper : LlmModelHelper {
     supportAudio: Boolean,
     onDone: (String) -> Unit,
     systemInstruction: Contents?,
-    tools: List<Any>,
+    tools: List<ToolProvider>,
     enableConversationConstrainedDecoding: Boolean,
     coroutineScope: CoroutineScope?,
   ) {
@@ -87,7 +86,8 @@ object LlmChatModelHelper : LlmModelHelper {
       when (visionAccelerator) {
         Accelerator.CPU.label -> Backend.CPU()
         Accelerator.GPU.label -> Backend.GPU()
-        Accelerator.NPU.label -> Backend.NPU()
+        Accelerator.NPU.label ->
+          Backend.NPU(nativeLibraryDir = context.applicationInfo.nativeLibraryDir)
         else -> Backend.GPU()
       }
     val shouldEnableImage = supportImage
@@ -96,14 +96,11 @@ object LlmChatModelHelper : LlmModelHelper {
       when (accelerator) {
         Accelerator.CPU.label -> Backend.CPU()
         Accelerator.GPU.label -> Backend.GPU()
-        Accelerator.NPU.label -> Backend.NPU()
+        Accelerator.NPU.label ->
+          Backend.NPU(nativeLibraryDir = context.applicationInfo.nativeLibraryDir)
         else -> Backend.CPU()
       }
     Log.d(TAG, "Preferred backend: $preferredBackend")
-
-    if (preferredBackend is Backend.NPU) {
-      ExperimentalFlags.npuLibrariesDir = context.applicationInfo.nativeLibraryDir
-    }
 
     val modelPath = model.getPath(context = context)
     val engineConfig =
@@ -158,7 +155,7 @@ object LlmChatModelHelper : LlmModelHelper {
     supportImage: Boolean,
     supportAudio: Boolean,
     systemInstruction: Contents?,
-    tools: List<Any>,
+    tools: List<ToolProvider>,
     enableConversationConstrainedDecoding: Boolean,
   ) {
     try {
@@ -243,15 +240,26 @@ object LlmChatModelHelper : LlmModelHelper {
     instance.conversation.cancelProcess()
   }
 
-  override fun generateResponseStream(
+  override fun runInference(
     model: Model,
     input: String,
+    resultListener: ResultListener,
+    cleanUpListener: CleanUpListener,
+    onError: (message: String) -> Unit,
     images: List<Bitmap>,
     audioClips: List<ByteArray>,
-  ): Flow<String> = callbackFlow {
+    coroutineScope: CoroutineScope?,
+    extraContext: Map<String, String>?,
+  ) {
     val instance = model.instance as? LlmModelInstance
     if (instance == null) {
-      throw IllegalStateException("LlmModelInstance is not initialized.")
+      onError("LlmModelInstance is not initialized.")
+      return
+    }
+
+    // Set listener.
+    if (!cleanUpListeners.containsKey(model.name)) {
+      cleanUpListeners[model.name] = cleanUpListener
     }
 
     val conversation = instance.conversation
@@ -272,29 +280,24 @@ object LlmChatModelHelper : LlmModelHelper {
       Contents.of(contents),
       object : MessageCallback {
         override fun onMessage(message: Message) {
-          trySend(message.toString())
+          resultListener(message.toString(), false, null)
         }
 
         override fun onDone() {
-          close()
+          resultListener("", true, null)
         }
 
         override fun onError(throwable: Throwable) {
           if (throwable is CancellationException) {
             Log.i(TAG, "The inference is cancelled.")
-            close()
+            resultListener("", true, null)
           } else {
             Log.e(TAG, "onError", throwable)
-            close(throwable)
+            onError("Error: ${throwable.message}")
           }
         }
       },
     )
-
-    awaitClose {
-      // Cancel ongoing inference if flow is cancelled
-      stopResponse(model)
-    }
   }
 
   private fun Bitmap.toPngByteArray(): ByteArray {

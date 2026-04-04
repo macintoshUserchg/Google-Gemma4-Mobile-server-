@@ -84,7 +84,14 @@ private const val TEST_MODEL_ALLOW_LIST = ""
 data class ModelInitializationStatus(
   val status: ModelInitializationStatusType,
   var error: String = "",
-)
+  var initializedBackends: Set<String> = setOf(),
+) {
+  fun isFirstInitialization(model: Model): Boolean {
+    val backend =
+      model.getStringConfigValue(key = ConfigKeys.ACCELERATOR, defaultValue = Accelerator.GPU.label)
+    return !initializedBackends.contains(backend)
+  }
+}
 
 enum class ModelInitializationStatusType {
   NOT_INITIALIZED,
@@ -389,6 +396,7 @@ constructor(
             ModelInitializationStatusType.INITIALIZED
       ) {
         Log.d(TAG, "Model '${model.name}' has been initialized. Skipping.")
+        onDone()
         return@launch
       }
 

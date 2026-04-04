@@ -27,6 +27,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +41,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
@@ -51,6 +53,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ListAlt
@@ -83,27 +86,37 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Brush.Companion.linearGradient
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.rigrise.gallery.GalleryTopAppBar
 import com.rigrise.gallery.R
 import com.rigrise.gallery.data.AppBarAction
 import com.rigrise.gallery.data.AppBarActionType
+import com.rigrise.gallery.data.BuiltInTaskId
 import com.rigrise.gallery.data.Category
 import com.rigrise.gallery.data.CategoryInfo
 import com.rigrise.gallery.data.Task
@@ -136,7 +149,7 @@ private const val CONTENT_COMPOSABLES_ANIMATION_DURATION = 1200
 private const val CONTENT_COMPOSABLES_OFFSET_Y = 16
 
 /** Navigation destination data */
-object HomeScreenDestination {
+private object HomeScreenDestination {
   @StringRes val titleRes = R.string.app_name
 }
 
@@ -151,6 +164,7 @@ fun HomeScreen(
   onModelsClicked: () -> Unit,
   enableAnimation: Boolean,
   modifier: Modifier = Modifier,
+  gm4: Boolean = false,
 ) {
   val uiState by modelManagerViewModel.uiState.collectAsState()
   var showSettingsDialog by remember { mutableStateOf(false) }
@@ -353,26 +367,80 @@ fun HomeScreen(
           // Outer box for coloring the background edge to edge.
           Box(
             contentAlignment = Alignment.TopCenter,
-            modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer),
+            modifier =
+              Modifier.fillMaxSize()
+                .background(
+                  if (gm4) {
+                    MaterialTheme.colorScheme.surface
+                  } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                  }
+                ),
           ) {
             // Inner box to hold content.
             Box(
               contentAlignment = Alignment.TopCenter,
-              modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding()),
+              modifier =
+                Modifier.fillMaxSize()
+                  .padding(top = innerPadding.calculateTopPadding())
+                  .verticalScroll(rememberScrollState()),
             ) {
-              Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+              // Background star at top.
+              if (gm4) {
+                val progress =
+                  if (!enableAnimation) {
+                    1f
+                  } else {
+                    rememberDelayedAnimationProgress(
+                      initialDelay = ANIMATION_INIT_DELAY,
+                      animationDurationMs = 2000,
+                      animationLabel = "bg star",
+                    )
+                  }
+                val configuration = LocalConfiguration.current
+                val screenWidth = configuration.screenWidthDp.dp
+                val targetWidth = screenWidth * 1.5f
+                Image(
+                  painter = painterResource(id = R.drawable.bg_star),
+                  contentDescription = null,
+                  modifier =
+                    Modifier.requiredWidth(targetWidth)
+                      .blur(radius = 35.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                      .offset(x = screenWidth * 0.25f, y = -screenWidth * 0.1f)
+                      .graphicsLayer {
+                        rotationZ = (1f - progress) * 40f
+                        scaleX = 0.4f + 0.6f * progress
+                        scaleY = 0.4f + 0.6f * progress
+                        alpha = progress * 2f
+                      },
+                  contentScale = ContentScale.Crop,
+                  colorFilter = ColorFilter.tint(MaterialTheme.customColors.bgStarColor),
+                )
+              }
+
+              Column(modifier = Modifier.fillMaxWidth()) {
                 var selectedCategoryIndex by remember { mutableIntStateOf(0) }
 
                 // App title and intro text.
                 Column(
                   modifier =
-                    Modifier.padding(horizontal = 40.dp, vertical = 48.dp).semantics(
-                      mergeDescendants = true
-                    ) {},
+                    Modifier.padding(
+                        horizontal = if (gm4) 24.dp else 40.dp,
+                        vertical = if (gm4) 0.dp else 48.dp,
+                      )
+                      .padding(top = 24.dp, bottom = 16.dp)
+                      .semantics(mergeDescendants = true) {},
                   verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                  AppTitle(enableAnimation = enableAnimation)
-                  IntroText(enableAnimation = enableAnimation)
+                  if (gm4) {
+                    AppTitleGm4(enableAnimation = enableAnimation)
+                  } else {
+                    AppTitle(enableAnimation = enableAnimation)
+                  }
+                  IntroText(enableAnimation = enableAnimation, gm4 = gm4)
+                  if (gm4) {
+                    TryGm4IntroText(enableAnimation = enableAnimation)
+                  }
                 }
 
                 // Tab header for categories.
@@ -397,12 +465,16 @@ fun HomeScreen(
 
                 // Task list in a horizontal pager. Each page shows the list of tasks for the
                 // category.
+                val grid = gm4
                 TaskList(
+                  modelManagerViewModel = modelManagerViewModel,
                   pagerState = pagerState,
                   sortedCategories = sortedCategories,
                   tasksByCategories = uiState.tasksByCategory,
                   enableAnimation = enableAnimation,
                   navigateToTaskScreen = navigateToTaskScreen,
+                  gm4 = gm4,
+                  grid = grid,
                 )
 
                 Spacer(modifier = Modifier.height(innerPadding.calculateBottomPadding() + 10.dp))
@@ -547,34 +619,119 @@ private fun AppTitle(enableAnimation: Boolean) {
 }
 
 @Composable
-private fun IntroText(enableAnimation: Boolean) {
-  val url = "https://huggingface.co/litert-community"
-  val linkColor = MaterialTheme.customColors.linkColor
-  val uriHandler = LocalUriHandler.current
+fun AppTitleGm4(enableAnimation: Boolean) {
+  val text1 = "Google"
+  val text2 = "AI Edge Gallery"
+  val annotatedText = buildAnnotatedString {
+    withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurface)) { append(text1) }
+    append(" ")
+    withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary)) { append(text2) }
+  }
+
+  RevealingText(
+    text = "",
+    annotatedText = annotatedText,
+    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium),
+    animationDelay = 0,
+    animationDurationMs =
+      if (enableAnimation) {
+        (TITLE_FIRST_LINE_ANIMATION_DURATION + TITLE_SECOND_LINE_ANIMATION_DURATION)
+      } else {
+        0
+      },
+    extraTextPadding = 0.dp,
+  )
+}
+
+@Composable
+private fun IntroText(enableAnimation: Boolean, gm4: Boolean) {
+  val litertUrl = "https://huggingface.co/litert-community"
 
   // Intro text animation:
   //
   // fade in + slide up.
   val progress =
-    if (!enableAnimation) 1f
-    else
+    if (!enableAnimation) {
+      1f
+    } else {
       rememberDelayedAnimationProgress(
         initialDelay = TITLE_SECOND_LINE_ANIMATION_START,
         animationDurationMs = CONTENT_COMPOSABLES_ANIMATION_DURATION,
         animationLabel = "intro text animation",
       )
+    }
 
   val introText = buildAnnotatedString {
-    append("${stringResource(R.string.app_intro)} ")
-    append(
-      buildTrackableUrlAnnotatedString(
-        url = url,
-        linkText = stringResource(R.string.litert_community_label),
+    val gemma4Url = "https://ai.google.dev/gemma"
+    if (gm4) {
+      append("Discover the power of on-device AI models from the ")
+      append(buildTrackableUrlAnnotatedString(url = litertUrl, linkText = "LiteRT community"))
+      append(", featuring the all-new ")
+      append(buildTrackableUrlAnnotatedString(url = gemma4Url, linkText = "Gemma 4"))
+      append(".")
+    } else {
+      append("${stringResource(R.string.app_intro)} ")
+      append(
+        buildTrackableUrlAnnotatedString(
+          url = litertUrl,
+          linkText = stringResource(R.string.litert_community_label),
+        )
       )
-    )
+    }
   }
   Text(
     introText,
+    style = MaterialTheme.typography.bodyMedium,
+    modifier =
+      Modifier.graphicsLayer {
+        alpha = progress
+        translationY = (CONTENT_COMPOSABLES_OFFSET_Y.dp * (1 - progress)).toPx()
+      },
+  )
+}
+
+@Composable
+private fun TryGm4IntroText(enableAnimation: Boolean) {
+  // fade in + slide up.
+  val progress =
+    if (!enableAnimation) {
+      1f
+    } else {
+      rememberDelayedAnimationProgress(
+        initialDelay = TITLE_SECOND_LINE_ANIMATION_START,
+        animationDurationMs = CONTENT_COMPOSABLES_ANIMATION_DURATION,
+        animationLabel = "intro text animation",
+      )
+    }
+  Row(
+    modifier =
+      Modifier.padding(top = 24.dp).graphicsLayer {
+        alpha = progress
+        translationY = (CONTENT_COMPOSABLES_OFFSET_Y.dp * (1 - progress)).toPx()
+      },
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Icon(
+      ImageVector.vectorResource(R.drawable.gemma_logo),
+      contentDescription = null,
+      modifier = Modifier.size(24.dp),
+      tint = MaterialTheme.colorScheme.primary,
+    )
+    Text(
+      text = "Try Gemma 4 today",
+      style =
+        MaterialTheme.typography.headlineSmall.copy(
+          fontWeight = FontWeight.Medium,
+          fontSize = 20.sp,
+          lineHeight = 24.sp,
+        ),
+      color = MaterialTheme.colorScheme.onSurface,
+    )
+  }
+
+  Text(
+    "Gemma 4 E2B & E4B are here! Try them in AI Chat, Agent Skills, or the use cases below.",
     style = MaterialTheme.typography.bodyMedium,
     modifier =
       Modifier.graphicsLayer {
@@ -630,11 +787,10 @@ private fun CategoryTabHeader(
               // Scroll to clicked item when the item is not fully inside view.
               scope.launch {
                 val visibleItems = listState.layoutInfo.visibleItemsInfo
-                val targetItem =
-                  visibleItems.find {
-                    // +1 because the first item is the item keyed at spacer_start.
-                    it.index == index + 1
-                  }
+                val targetItem = visibleItems.find {
+                  // +1 because the first item is the item keyed at spacer_start.
+                  it.index == index + 1
+                }
                 if (
                   targetItem == null ||
                     targetItem.offset < 0 ||
@@ -662,11 +818,14 @@ private fun CategoryTabHeader(
 
 @Composable
 private fun TaskList(
+  modelManagerViewModel: ModelManagerViewModel,
   pagerState: PagerState,
   sortedCategories: List<CategoryInfo>,
   tasksByCategories: Map<String, List<Task>>,
   enableAnimation: Boolean,
   navigateToTaskScreen: (Task) -> Unit,
+  gm4: Boolean = false,
+  grid: Boolean = false,
 ) {
   // Model list animation:
   //
@@ -690,29 +849,119 @@ private fun TaskList(
     initialAnimationDone = true
   }
 
+  // The highlighted tiles at the top.
+  if (gm4) {
+    Column(
+      verticalArrangement = Arrangement.spacedBy(10.dp),
+      modifier =
+        Modifier.padding(horizontal = 24.dp).graphicsLayer {
+          alpha = progress
+          translationY = (CONTENT_COMPOSABLES_OFFSET_Y.dp * (1 - progress)).toPx()
+        },
+    ) {
+      val chatToDescription =
+        mapOf(
+          BuiltInTaskId.LLM_CHAT to "Chat with the latest Gemma 4 model today",
+          // use "\u00a0" to make sure the word before and after it should always be together when
+          // wrapping lines.
+          BuiltInTaskId.LLM_AGENT_CHAT to "Have Gemma 4 complete agentic tasks for\u00A0you",
+        )
+      for (task in
+        listOf(
+          modelManagerViewModel.getTaskById(BuiltInTaskId.LLM_CHAT)!!,
+          modelManagerViewModel.getTaskById(BuiltInTaskId.LLM_AGENT_CHAT)!!,
+        )) {
+        TaskCard(
+          task = task,
+          index = 0,
+          animate = !initialAnimationDone && enableAnimation,
+          onClick = { navigateToTaskScreen(task) },
+          modifier = Modifier.fillMaxWidth(),
+          description = chatToDescription[task.id]!!,
+        )
+      }
+
+      Text(
+        text = "Explore other use cases",
+        style =
+          MaterialTheme.typography.headlineSmall.copy(
+            fontWeight = FontWeight.Medium,
+            fontSize = 20.sp,
+            lineHeight = 24.sp,
+          ),
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = 22.dp, bottom = 16.dp),
+      )
+    }
+  }
+
   HorizontalPager(
     state = pagerState,
     verticalAlignment = Alignment.Top,
     contentPadding = PaddingValues(horizontal = 20.dp),
   ) { pageIndex ->
     val tasks = tasksByCategories[sortedCategories[pageIndex].id]!!
-    Column(
-      modifier =
-        Modifier.fillMaxWidth().padding(4.dp).graphicsLayer {
-          translationY = (CONTENT_COMPOSABLES_OFFSET_Y.dp * (1 - progress)).toPx()
-        },
-      verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-      var index = 0
-      for (task in tasks) {
-        TaskCard(
-          task = task,
-          index = index,
-          animate = (pageIndex == 0 || pageIndex == 1) && !initialAnimationDone && enableAnimation,
-          onClick = { navigateToTaskScreen(task) },
-          modifier = Modifier.fillMaxWidth(),
-        )
-        index++
+    if (grid) {
+      Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier =
+          Modifier.fillMaxWidth().padding(4.dp).graphicsLayer {
+            translationY = (CONTENT_COMPOSABLES_OFFSET_Y.dp * (1 - progress)).toPx()
+          },
+      ) {
+        for (i in tasks.indices step 2) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+          ) {
+            // First item in the row
+            TaskCard(
+              task = tasks[i],
+              index = i,
+              animate =
+                (pageIndex == 0 || pageIndex == 1) && !initialAnimationDone && enableAnimation,
+              onClick = { navigateToTaskScreen(tasks[i]) },
+              modifier = Modifier.weight(1f),
+              square = true,
+            )
+
+            // Second item in the row, if it exists
+            if (i + 1 < tasks.size) {
+              TaskCard(
+                task = tasks[i + 1],
+                index = i + 1,
+                animate =
+                  (pageIndex == 0 || pageIndex == 1) && !initialAnimationDone && enableAnimation,
+                onClick = { navigateToTaskScreen(tasks[i + 1]) },
+                modifier = Modifier.weight(1f),
+                square = true,
+              )
+            } else {
+              // Add a spacer to fill the remaining space if there's only one item in the last row
+              Spacer(modifier = Modifier.weight(1f))
+            }
+          }
+        }
+      }
+    } else {
+      Column(
+        modifier =
+          Modifier.fillMaxWidth().padding(4.dp).graphicsLayer {
+            translationY = (CONTENT_COMPOSABLES_OFFSET_Y.dp * (1 - progress)).toPx()
+          },
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+      ) {
+        for ((index, task) in tasks.withIndex()) {
+          TaskCard(
+            task = task,
+            index = index,
+            animate =
+              (pageIndex == 0 || pageIndex == 1) && !initialAnimationDone && enableAnimation,
+            onClick = { navigateToTaskScreen(task) },
+            modifier = Modifier.fillMaxWidth(),
+            square = false,
+          )
+        }
       }
     }
   }
@@ -725,6 +974,8 @@ private fun TaskCard(
   animate: Boolean,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  description: String = "",
+  square: Boolean = false,
 ) {
   // Observes the model count and updates the model count label with a fade-in/fade-out animation
   // whenever the count changes.
@@ -782,40 +1033,125 @@ private fun TaskCard(
         .clickable(onClick = onClick)
         .graphicsLayer { alpha = progress }
         .semantics { contentDescription = cbTask },
-    colors = CardDefaults.cardColors(containerColor = MaterialTheme.customColors.taskCardBgColor),
+    colors =
+      CardDefaults.cardColors(
+        containerColor =
+          if (description.isNotEmpty() || square) {
+            MaterialTheme.colorScheme.surfaceContainer
+          } else {
+
+            MaterialTheme.customColors.taskCardBgColor
+          }
+      ),
   ) {
-    Row(
-      modifier = Modifier.fillMaxSize().padding(24.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      // Title and model count
-      Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    if (square) {
+      Column(
+        modifier = Modifier.fillMaxSize().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        TaskIcon(task = task, width = 40.dp)
+        Column() {
+          Text(
+            curModelCountLabel,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+            modifier = Modifier.clearAndSetSemantics {},
+          )
           Text(
             task.label,
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.titleMedium,
           )
-          if (task.experimental) {
-            Icon(
-              painter = painterResource(R.drawable.ic_experiment),
-              contentDescription = "Experimental",
-              modifier = Modifier.size(20.dp).padding(start = 4.dp),
-              tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          Text(
+            task.shortDescription,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 14.sp),
+            modifier = Modifier.clearAndSetSemantics {},
+            minLines = 2,
+            maxLines = 2,
+            autoSize =
+              TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = 12.sp, stepSize = 1.sp),
+          )
+        }
+      }
+    } else {
+      Row(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        if (description.isNotEmpty()) {
+          // Icon.
+          TaskIcon(task = task, width = 40.dp)
+
+          // Title and description.
+          Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+              Text(
+                task.label,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleMedium,
+              )
+              if (task.newFeature) {
+                Box(
+                  modifier =
+                    Modifier.offset(y = (-6).dp, x = 6.dp)
+                      .clip(RoundedCornerShape(8.dp))
+                      .background(MaterialTheme.customColors.newFeatureContainerColor)
+                      .padding(horizontal = 12.dp)
+                      .height(26.dp),
+                  contentAlignment = Alignment.Center,
+                ) {
+                  Text(
+                    "New",
+                    color = MaterialTheme.customColors.newFeatureTextColor,
+                    style = MaterialTheme.typography.labelLarge,
+                  )
+                }
+              }
+            }
+            Text(
+              description,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              style =
+                MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
+              modifier = Modifier.clearAndSetSemantics {},
             )
           }
-        }
-        Text(
-          curModelCountLabel,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          style = MaterialTheme.typography.bodyMedium,
-          modifier = Modifier.clearAndSetSemantics {},
-        )
-      }
+        } else {
+          // Title and model count
+          Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Text(
+                task.label,
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleMedium,
+              )
+              if (task.experimental) {
+                Icon(
+                  painter = painterResource(R.drawable.ic_experiment),
+                  contentDescription = "Experimental",
+                  modifier = Modifier.size(20.dp).padding(start = 4.dp),
+                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+            }
+            Text(
+              curModelCountLabel,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              style = MaterialTheme.typography.bodyMedium,
+              modifier = Modifier.clearAndSetSemantics {},
+            )
+          }
 
-      // Icon.
-      TaskIcon(task = task, width = 40.dp)
+          // Icon.
+          TaskIcon(task = task, width = 40.dp)
+        }
+      }
     }
   }
 }

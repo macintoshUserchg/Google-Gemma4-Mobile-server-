@@ -20,31 +20,35 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
 import com.rigrise.gallery.GalleryEvent
+import com.rigrise.gallery.R
 import com.rigrise.gallery.data.BuiltInTaskId
 import com.rigrise.gallery.data.Model
+import com.rigrise.gallery.data.RuntimeType
 import com.rigrise.gallery.data.Task
 import com.rigrise.gallery.firebaseAnalytics
-import com.rigrise.gallery.ui.common.chat.ChatMessage
 import com.rigrise.gallery.ui.common.chat.ChatMessageAudioClip
 import com.rigrise.gallery.ui.common.chat.ChatMessageImage
-import com.rigrise.gallery.ui.common.chat.ChatMessageInfo
 import com.rigrise.gallery.ui.common.chat.ChatMessageText
 import com.rigrise.gallery.ui.common.chat.ChatView
-import com.rigrise.gallery.ui.common.chat.MessageBodyInfo
+import com.rigrise.gallery.ui.common.chat.SendMessageTrigger
 import com.rigrise.gallery.ui.modelmanager.ModelManagerViewModel
+import com.rigrise.gallery.ui.theme.emptyStateContent
+import com.rigrise.gallery.ui.theme.emptyStateTitle
 
 private const val TAG = "AGLlmChatScreen"
 
@@ -56,14 +60,15 @@ fun LlmChatScreen(
   taskId: String = BuiltInTaskId.LLM_CHAT,
   onFirstToken: (Model) -> Unit = {},
   onGenerateResponseDone: (Model) -> Unit = {},
+  onSkillClicked: () -> Unit = {},
   onResetSessionClickedOverride: ((Task, Model) -> Unit)? = null,
   composableBelowMessageList: @Composable (Model) -> Unit = {},
   viewModel: LlmChatViewModel = hiltViewModel(),
   allowEditingSystemPrompt: Boolean = false,
   curSystemPrompt: String = "",
   onSystemPromptChanged: (String) -> Unit = {},
-  emptyStateComposable: @Composable () -> Unit = {},
-  sendMessageTrigger: Pair<Model, List<ChatMessage>>? = null,
+  emptyStateComposable: @Composable (Model) -> Unit = {},
+  sendMessageTrigger: SendMessageTrigger? = null,
   showImagePicker: Boolean = false,
   showAudioPicker: Boolean = false,
 ) {
@@ -73,6 +78,7 @@ fun LlmChatScreen(
     taskId = taskId,
     navigateUp = navigateUp,
     modifier = modifier,
+    onSkillClicked = onSkillClicked,
     onFirstToken = onFirstToken,
     onGenerateResponseDone = onGenerateResponseDone,
     onResetSessionClickedOverride = onResetSessionClickedOverride,
@@ -102,22 +108,23 @@ fun LlmAskImageScreen(
     modifier = modifier,
     showImagePicker = true,
     showAudioPicker = false,
-    emptyStateComposable = {
-      Column(
-        modifier =
-          Modifier.padding(horizontal = 16.dp).fillMaxSize().semantics(mergeDescendants = true) {
-            liveRegion = LiveRegionMode.Polite
-          },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-      ) {
-        MessageBodyInfo(
-          ChatMessageInfo(
-            content =
-              "To get started, tap the Add image button below to add images (up to 10 in a single session) and type a prompt to ask a question about it."
-          ),
-          smallFontSize = false,
-        )
+    emptyStateComposable = { model ->
+      Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+          modifier =
+            Modifier.align(Alignment.Center).padding(horizontal = 48.dp).padding(bottom = 48.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Text(stringResource(R.string.askimage_emptystate_title), style = emptyStateTitle)
+          var contentRes = R.string.askimage_emptystate_content
+          Text(
+            stringResource(contentRes),
+            style = emptyStateContent,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+          )
+        }
       }
     },
   )
@@ -139,21 +146,21 @@ fun LlmAskAudioScreen(
     showImagePicker = false,
     showAudioPicker = true,
     emptyStateComposable = {
-      Column(
-        modifier =
-          Modifier.padding(horizontal = 16.dp).fillMaxSize().semantics(mergeDescendants = true) {
-            liveRegion = LiveRegionMode.Polite
-          },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-      ) {
-        MessageBodyInfo(
-          ChatMessageInfo(
-            content =
-              "To get started, tap the Add audio button below to add your audio clip. Limited to 1 clip up to 30 seconds long."
-          ),
-          smallFontSize = false,
-        )
+      Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+          modifier =
+            Modifier.align(Alignment.Center).padding(horizontal = 48.dp).padding(bottom = 48.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Text(stringResource(R.string.askaudio_emptystate_title), style = emptyStateTitle)
+          Text(
+            stringResource(R.string.askaudio_emptystate_content),
+            style = emptyStateContent,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+          )
+        }
       }
     },
   )
@@ -166,20 +173,22 @@ fun ChatViewWrapper(
   taskId: String,
   navigateUp: () -> Unit,
   modifier: Modifier = Modifier,
+  onSkillClicked: () -> Unit = {},
   onFirstToken: (Model) -> Unit = {},
   onGenerateResponseDone: (Model) -> Unit = {},
   onResetSessionClickedOverride: ((Task, Model) -> Unit)? = null,
   composableBelowMessageList: @Composable (Model) -> Unit = {},
-  emptyStateComposable: @Composable () -> Unit = {},
+  emptyStateComposable: @Composable (Model) -> Unit = {},
   allowEditingSystemPrompt: Boolean = false,
   curSystemPrompt: String = "",
   onSystemPromptChanged: (String) -> Unit = {},
-  sendMessageTrigger: Pair<Model, List<ChatMessage>>? = null,
+  sendMessageTrigger: SendMessageTrigger? = null,
   showImagePicker: Boolean = false,
   showAudioPicker: Boolean = false,
 ) {
   val context = LocalContext.current
   val task = modelManagerViewModel.getTaskById(id = taskId)!!
+  val allowThinking = task.allowThinking()
 
   ChatView(
     task = task,
@@ -205,7 +214,9 @@ fun ChatViewWrapper(
         }
       }
       if ((text.isNotEmpty() && chatMessageText != null) || audioMessages.isNotEmpty()) {
-        modelManagerViewModel.addTextInputHistory(text)
+        if (text.isNotEmpty()) {
+          modelManagerViewModel.addTextInputHistory(text)
+        }
         viewModel.generateResponse(
           model = model,
           input = text,
@@ -222,6 +233,7 @@ fun ChatViewWrapper(
               modelManagerViewModel = modelManagerViewModel,
             )
           },
+          allowThinking = allowThinking,
         )
 
         firebaseAnalytics?.logEvent(
@@ -244,6 +256,7 @@ fun ChatViewWrapper(
               modelManagerViewModel = modelManagerViewModel,
             )
           },
+          allowThinking = allowThinking,
         )
       }
     },
@@ -262,6 +275,7 @@ fun ChatViewWrapper(
     },
     showStopButtonInInputWhenInProgress = true,
     onStopButtonClicked = { model -> viewModel.stopResponse(model = model) },
+    onSkillClicked = onSkillClicked,
     navigateUp = navigateUp,
     modifier = modifier,
     composableBelowMessageList = composableBelowMessageList,
